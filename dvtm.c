@@ -271,13 +271,14 @@ static void
 draw_border(Client *c) {
 	if (!show_border())
 		return;
+
 	char t = '\0';
 	int x, y, maxlen;
 
 	wattrset(c->window, (sel == c || (runinall && !c->minimized)) ? SELECTED_ATTR : NORMAL_ATTR);
 	getyx(c->window, y, x);
 	mvwhline(c->window, 0, 0, ACS_HLINE, c->w);
-	maxlen = c->w - (2 + sstrlen(TITLE) - sstrlen("%s%sd")  + sstrlen(config.separator) + 2);
+	maxlen = c->w - (2 + strlen(config.title) - sstrlen("%s%sd")  + strlen(config.separator) + 2);
 	if (maxlen < 0)
 		maxlen = 0;
 	if ((size_t)maxlen < sizeof(c->title)) {
@@ -285,7 +286,7 @@ draw_border(Client *c) {
 		c->title[maxlen] = '\0';
 	}
 
-	mvwprintw(c->window, 0, 2, TITLE,
+	mvwprintw(c->window, 0, 2, config.title,
 	          *c->title ? c->title : "",
 	          *c->title ? config.separator : "",
 	          c->order);
@@ -645,12 +646,29 @@ mouse_setup() {
 #endif /* CONFIG_MOUSE */
 }
 
+static void
+ini_strncpy(char *dest, const char *src, int len) {
+	if (strlen(src)>1 && strlen(src)<len && src[0]=='"' && src[strlen(src)-1]=='"')
+		strncpy(dest, src+1, strlen(src)-2);
+	else
+		strncpy(dest, src, len);
+}
+
+static void
+ini_load_defaults() {
+	ini_strncpy(config.separator, SEPARATOR, 255);
+	ini_strncpy(config.title, TITLE, 255);
+}
+
 static int
-handler(void *user, const char *section,
+ini_handler(void *user, const char *section,
 		const char *name, const char *value) {
 
 	if (strcmp(name, "separator")==0) {
-		strncpy(config.separator, value, 255);
+		ini_strncpy(config.separator, value, 255);
+
+	} else if (strcmp(name, "title")==0) {
+		ini_strncpy(config.title, value, 255);
 	}
 	return 0;
 }
@@ -663,18 +681,23 @@ setup() {
 	if (!(shell = getenv("SHELL")))
 		shell = "/bin/sh";
 	setlocale(LC_CTYPE, "");
+
+	// Load default configration from config.h definitions:
+	ini_load_defaults();
 	
 	// Read config file if present:
 	snprintf(iniFileName, 255, "%s/.dvtmconf", getenv("HOME"));
 	if (access(iniFileName, R_OK)==0) {
 		printf("Config file found.\n");
-		if (ini_parse(iniFileName, handler, NULL) < 0) {
+		if (ini_parse(iniFileName, ini_handler, NULL) < 0) {
 			fprintf(stderr, "Error reading config file.");
 			exit(1);
 		}
 	}
 
-	// Debugging, stop here:
+	printf("%d\n", show_border());
+
+	// Debugging config file loading, stop here:
 	//exit(0);
 
 	initscr();
