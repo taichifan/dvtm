@@ -6,4 +6,5 @@ typedef struct {
 	char title[256];
 
 	Key keys[640]; // 640 kb (key bindings) should be enough for anybody
+	int nkeys;
 } Configuration;

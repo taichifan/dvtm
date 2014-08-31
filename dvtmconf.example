@@ -3,11 +3,12 @@
 ;; Place in ~/.dvtmconf
 ;;
 
-; String separating title from window number
-;separator = " | "
+[main]
+	; String separating title from window number
+	separator = " | "
 
-; printf-style format string for full window title:
-; 	first %s is title
-; 	second %s is separator
-; 	third %s is window number
-;title = "[%s%s#%d]" ; printf format for title string
+	; printf-style format string for full window title:
+	; 	first %s is title
+	; 	second %s is separator
+	; 	third %s is window number
+	title = "[%s%s#%d]" ; printf format for title string

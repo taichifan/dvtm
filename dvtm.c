@@ -646,6 +646,34 @@ mouse_setup() {
 #endif /* CONFIG_MOUSE */
 }
 
+static Cmd *
+get_cmd_by_name(const char *name) {
+	for (unsigned int i = 0; i < countof(commands); i++) {
+		if (!strcmp(name, commands[i].name))
+			return &commands[i];
+	}
+	return NULL;
+}
+
+static void
+add_key(Key *key) {
+	int i;
+
+	for (i=0; i<config.nkeys; i++) {
+		if (config.keys[i].mod == key->mod && config.keys[i].code == key->code) {
+			config.keys[i].action = key->action;
+			return;
+		}
+	}
+
+	if (config.nkeys<640) {
+		config.nkeys += 1;
+		config.keys[config.nkeys].mod = key->mod;
+		config.keys[config.nkeys].code = key->code;
+		config.keys[config.nkeys].action = key->action;
+	}
+}	
+
 static void
 ini_strncpy(char *dest, const char *src, int len) {
 	if (strlen(src)>1 && strlen(src)<len && src[0]=='"' && src[strlen(src)-1]=='"')
@@ -658,17 +686,39 @@ static void
 ini_load_defaults() {
 	ini_strncpy(config.separator, SEPARATOR, 255);
 	ini_strncpy(config.title, TITLE, 255);
+
+	for (unsigned int i=0; i<countof(keys); i++) {
+		add_key(&(keys[i]));
+	}
+
+	printf("%d\n", config.nkeys);
 }
 
 static int
 ini_handler(void *user, const char *section,
 		const char *name, const char *value) {
 
-	if (strcmp(name, "separator")==0) {
-		ini_strncpy(config.separator, value, 255);
+	Cmd *cmd;
+	Key key;
 
-	} else if (strcmp(name, "title")==0) {
-		ini_strncpy(config.title, value, 255);
+	if (strcmp(section,"main")==0) {
+		if (strcmp(name, "separator")==0) {
+			ini_strncpy(config.separator, value, 255);
+		} else if (strcmp(name, "title")==0) {
+			ini_strncpy(config.title, value, 255);
+		}
+
+	} else if (strcmp(section, "keys")==0) {
+		if ((cmd = get_cmd_by_name(value)) != NULL) {
+			
+			key.mod = MOD;
+			key.code = name[0];
+			key.action = cmd->action;
+			add_key(&key);
+
+			//const char* args[3] = {NULL, NULL, NULL};
+		}
+
 	}
 	return 0;
 }
@@ -681,6 +731,9 @@ setup() {
 	if (!(shell = getenv("SHELL")))
 		shell = "/bin/sh";
 	setlocale(LC_CTYPE, "");
+
+	// Clear the key table
+	config.nkeys = 0;
 
 	// Load default configration from config.h definitions:
 	ini_load_defaults();
@@ -695,7 +748,7 @@ setup() {
 		}
 	}
 
-	printf("%d\n", show_border());
+	printf("%s\n", config.separator);
 
 	// Debugging config file loading, stop here:
 	//exit(0);
@@ -1115,15 +1168,6 @@ static void
 mouse_zoom(const char *args[]) {
 	focus(msel);
 	zoom(NULL);
-}
-
-static Cmd *
-get_cmd_by_name(const char *name) {
-	for (unsigned int i = 0; i < countof(commands); i++) {
-		if (!strcmp(name, commands[i].name))
-			return &commands[i];
-	}
-	return NULL;
 }
 
 static void
