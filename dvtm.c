@@ -135,6 +135,18 @@ typedef struct {
 	unsigned short int id;
 } CmdFifo;
 
+/*
+ * Structure containing configuration loaded from config file.
+ */
+typedef struct {
+	char separator[256];
+	char title[256];
+
+	char mod;
+	Key keys[640]; // 640 kb (key bindings) should be enough for anybody
+	int nkeys;
+} Configuration;
+
 #define countof(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define sstrlen(str) (sizeof(str) - 1)
 #define max(x, y) ((x) > (y) ? (x) : (y))
@@ -186,7 +198,6 @@ static char *title;
 #define NOMOD ERR
 
 #include "config.h"
-#include "newconfig.h"
 
 /* global variables */
 Configuration config;
@@ -591,8 +602,8 @@ resize_screen() {
 
 static bool
 is_modifier(unsigned int mod) {
-	for (unsigned int i = 0; i < countof(keys); i++) {
-		if (keys[i].mod == mod)
+	for (unsigned int i = 0; i < config.nkeys; i++) {
+		if (config.keys[i].mod == mod)
 			return true;
 	}
 	return false;
@@ -600,9 +611,9 @@ is_modifier(unsigned int mod) {
 
 static Key*
 keybinding(unsigned int mod, unsigned int code) {
-	for (unsigned int i = 0; i < countof(keys); i++) {
-		if (keys[i].mod == mod && keys[i].code == code)
-			return &keys[i];
+	for (unsigned int i = 0; i < config.nkeys; i++) {
+		if (config.keys[i].mod == mod && config.keys[i].code == code)
+			return &(config.keys[i]);
 	}
 	return NULL;
 }
@@ -686,12 +697,11 @@ static void
 ini_load_defaults() {
 	ini_strncpy(config.separator, SEPARATOR, 255);
 	ini_strncpy(config.title, TITLE, 255);
+	config.mod = MOD;
 
 	for (unsigned int i=0; i<countof(keys); i++) {
 		add_key(&(keys[i]));
 	}
-
-	printf("%d\n", config.nkeys);
 }
 
 static int
@@ -706,12 +716,17 @@ ini_handler(void *user, const char *section,
 			ini_strncpy(config.separator, value, 255);
 		} else if (strcmp(name, "title")==0) {
 			ini_strncpy(config.title, value, 255);
+		} else if (strcmp(name, "mod")==0) {
+			config.mod = CTRL(value[0]);
+			for (unsigned int i=0; i<config.nkeys; i++) {
+				config.keys[i].mod = config.mod;
+			}
 		}
 
 	} else if (strcmp(section, "keys")==0) {
 		if ((cmd = get_cmd_by_name(value)) != NULL) {
 			
-			key.mod = MOD;
+			key.mod = config.mod;
 			key.code = name[0];
 			key.action = cmd->action;
 			add_key(&key);
@@ -747,8 +762,6 @@ setup() {
 			exit(1);
 		}
 	}
-
-	printf("%s\n", config.separator);
 
 	// Debugging config file loading, stop here:
 	//exit(0);
