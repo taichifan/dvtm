@@ -17,6 +17,7 @@
 #include <sys/wait.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <pwd.h>
 #include <fcntl.h>
 #include <curses.h>
 #include <stdio.h>
@@ -31,6 +32,7 @@
 # include <termios.h>
 #endif
 #include "vt.h"
+#include "ini.h"
 
 #ifdef PDCURSES
 int ESCDELAY;
@@ -184,8 +186,10 @@ static char *title;
 #define NOMOD ERR
 
 #include "config.h"
+#include "newconfig.h"
 
 /* global variables */
+Configuration config;
 Screen screen = { MFACT, SCROLL_HISTORY };
 static Client *sel = NULL;
 static Client *lastsel = NULL;
@@ -273,7 +277,7 @@ draw_border(Client *c) {
 	wattrset(c->window, (sel == c || (runinall && !c->minimized)) ? SELECTED_ATTR : NORMAL_ATTR);
 	getyx(c->window, y, x);
 	mvwhline(c->window, 0, 0, ACS_HLINE, c->w);
-	maxlen = c->w - (2 + sstrlen(TITLE) - sstrlen("%s%sd")  + sstrlen(SEPARATOR) + 2);
+	maxlen = c->w - (2 + sstrlen(TITLE) - sstrlen("%s%sd")  + sstrlen(config.separator) + 2);
 	if (maxlen < 0)
 		maxlen = 0;
 	if ((size_t)maxlen < sizeof(c->title)) {
@@ -283,7 +287,7 @@ draw_border(Client *c) {
 
 	mvwprintw(c->window, 0, 2, TITLE,
 	          *c->title ? c->title : "",
-	          *c->title ? SEPARATOR : "",
+	          *c->title ? config.separator : "",
 	          c->order);
 	if (t)
 		c->title[maxlen] = t;
@@ -641,11 +645,38 @@ mouse_setup() {
 #endif /* CONFIG_MOUSE */
 }
 
+static int
+handler(void *user, const char *section,
+		const char *name, const char *value) {
+
+	if (strcmp(name, "separator")==0) {
+		strncpy(config.separator, value, 255);
+	}
+	return 0;
+}
+
 static void
 setup() {
+	char iniFileName[256];
+	FILE *iniFile;
+
 	if (!(shell = getenv("SHELL")))
 		shell = "/bin/sh";
 	setlocale(LC_CTYPE, "");
+	
+	// Read config file if present:
+	snprintf(iniFileName, 255, "%s/.dvtmconf", getenv("HOME"));
+	if (access(iniFileName, R_OK)==0) {
+		printf("Config file found.\n");
+		if (ini_parse(iniFileName, handler, NULL) < 0) {
+			fprintf(stderr, "Error reading config file.");
+			exit(1);
+		}
+	}
+
+	// Debugging, stop here:
+	//exit(0);
+
 	initscr();
 	start_color();
 	noecho();
