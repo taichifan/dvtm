@@ -2,13 +2,13 @@
 
 MOD="" # CTRL+g
 ESC="" # \e
-DVTM="./dvtm"
-LOG="dvtm.log"
+DVTM="./dvtm-plus"
+LOG="dvtm-plus.log"
 TEST_LOG="$0.log"
 UTF8_TEST_URL="http://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-demo.txt"
 
 [ ! -z "$1" ] && DVTM="$1"
-[ ! -x "$DVTM" ] && echo "usage: $0 path-to-dvtm-binary" && exit 1
+[ ! -x "$DVTM" ] && echo "usage: $0 path-to-dvtm-plus-binary" && exit 1
 
 dvtm_input() {
 	printf "$1"
